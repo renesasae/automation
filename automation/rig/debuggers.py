@@ -123,6 +123,9 @@ USAGE
             raise CLIError("JLink path provided is not an executable")
         
         jlink = JLink(jlink)
+        jlink.Program(r"C:\Users\onkar.raut\Documents\2020H1\reviews\ep_ra2a1\freertos_ek_ra2a1_ep\freertos_ek_ra2a1_ep Program.jlink","831004110")
+        jlink.Program(r"C:\Users\onkar.raut\Documents\2020H1\reviews\ep_ra2a1\quickstart_ek_ra2a1_ep\quickstart_ek_ra2a1_ep Program.jlink","831004110")
+        
        
             
         if inpat and expat and inpat == expat:
@@ -147,7 +150,7 @@ USAGE
 if __name__ == "__main__":
     if DEBUG:
 #         sys.argv.append("-h")
-        sys.argv.append("-v")
+        sys.argv.append("-vvvv")
         sys.argv.append("-r")
     if TESTRUN:
         import doctest
