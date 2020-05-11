@@ -19,12 +19,12 @@ It defines classes_and_methods
 
 import sys
 import os
-from automation.rig import jlink
+from automation.rig import files
+from automation.rig.jlink import JLink
 
 import logging
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
-from automation.rig.jlink import JLink
 
 __all__ = []
 __version__ = 0.1
@@ -123,6 +123,12 @@ USAGE
             raise CLIError("JLink path provided is not an executable")
         
         jlink = JLink(jlink)
+        
+        scriptFiles = files.Find()
+        scriptFiles.readcsv(r"C:\Users\onkar.raut\Documents\2020H1\LiClipse\testing\automation\board_programs.csv")
+        scriptFiles.readcsv(r"C:\Users\onkar.raut\Documents\2020H1\LiClipse\testing\automation\serial_number_definitions.csv")
+        scriptFiles.prepare()
+        
         jlink.Program(r"C:\Users\onkar.raut\Documents\2020H1\reviews\ep_ra2a1\freertos_ek_ra2a1_ep\freertos_ek_ra2a1_ep Program.jlink","831004110")
         jlink.Program(r"C:\Users\onkar.raut\Documents\2020H1\reviews\ep_ra2a1\quickstart_ek_ra2a1_ep\quickstart_ek_ra2a1_ep Program.jlink","831004110")
         

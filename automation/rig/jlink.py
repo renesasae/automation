@@ -7,7 +7,7 @@ import os
 import re
 import subprocess
 import logging
-from plistlib import InvalidFileException
+
 
 class JLink(object):
     '''
@@ -44,9 +44,10 @@ class JLink(object):
     def Program(self,CommandFile=None,SerialNumber=None):
         if CommandFile == None :
             logging.critical("Missing needed CommandFile")
-            raise 
+            raise ValueError("Missing needed CommandFile")
         if SerialNumber == None:
             logging.critical("Missing needed SerialNumber")
+            raise ValueError("Missing needed SerialNumber")
         
         if os.path.exists(CommandFile) == False:
             logging.error("CommandFile does not exist on file system check path: %s", CommandFile)
