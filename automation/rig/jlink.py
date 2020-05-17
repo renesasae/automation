@@ -5,8 +5,8 @@ Created on May 2, 2020
 '''
 import os
 import re
-import subprocess
 import logging
+import subprocess
 
 
 class JLink(object):
@@ -51,7 +51,7 @@ class JLink(object):
         
         if os.path.exists(CommandFile) == False:
             logging.error("CommandFile does not exist on file system check path: %s", CommandFile)
-            raise FileNotFoundError
+            raise FileNotFoundError("CommandFile does not exist on file system check path: %s", CommandFile)
         
         CommandFile = os.path.normpath(CommandFile)
         __fpath__, __fcmd__ = os.path.split(CommandFile)

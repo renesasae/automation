@@ -125,9 +125,11 @@ USAGE
         jlink = JLink(jlink)
         
         scriptFiles = files.Find()
+        scriptFiles.hex(r"C:\Users\onkar.raut\Documents\2020H1\reviews\ep_ra2a1")
         scriptFiles.readcsv(r"C:\Users\onkar.raut\Documents\2020H1\LiClipse\testing\automation\board_programs.csv")
         scriptFiles.readcsv(r"C:\Users\onkar.raut\Documents\2020H1\LiClipse\testing\automation\serial_number_definitions.csv")
         scriptFiles.prepare()
+        scriptFiles.write()
         
         jlink.Program(r"C:\Users\onkar.raut\Documents\2020H1\reviews\ep_ra2a1\freertos_ek_ra2a1_ep\freertos_ek_ra2a1_ep Program.jlink","831004110")
         jlink.Program(r"C:\Users\onkar.raut\Documents\2020H1\reviews\ep_ra2a1\quickstart_ek_ra2a1_ep\quickstart_ek_ra2a1_ep Program.jlink","831004110")
