@@ -12,8 +12,6 @@ import platform
 import unittest
 import automation.rig.boards
 
-
-
 class Test(unittest.TestCase):
     jlink = None
     jlinkDLL = None
@@ -23,6 +21,28 @@ class Test(unittest.TestCase):
     board_name = None
     module_name = None
     serial_number = None
+    
+    expected_common = r"""
+******************************************************************
+*   Renesas FSP Example Project for r_acmplp Module              *
+*   Example Project Version 1.0                                  *
+*   Flex Software Pack Version  1.0.0                            *
+******************************************************************
+
+Refer to readme.txt file for more details on Example Project and 
+FSP User's Manual for more information about r_acmplp driver
+
+The project initializes ACMPLP module in Normal mode.
+In Normal mode, user can enter DAC value(input to ACMPLP) within permitted range(0-4095).
+When DAC input value is greater than set reference voltage(another input to ACMPLP),
+Comparator output status is HIGH and on-board LED is turned ON.
+If the output status (when DAC input less than ref voltage) is LOW,then the LED is turned OFF.
+
+ Menu Options
+ 1. Enter 1 for ACMPLP Normal Mode
+ 2. Enter 2 for Exit
+"""
+    
     def setUp(self):
         # Reads EP version and FSP version from a file        
         jlinkDLLpath=None
@@ -55,28 +75,10 @@ class Test(unittest.TestCase):
             
             pass
         
-        expected = """
-******************************************************************
-*   Renesas FSP Example Project for r_acmplp Module              *
-*   Example Project Version 1.0                                  *
-*   Flex Software Pack Version  1.0.0                            *
-******************************************************************
-
-Refer to readme.txt file for more details on Example Project and 
-FSP User's Manual for more information about r_acmplp driver
-
-The project initializes ACMPLP module in Normal mode.
-In Normal mode, user can enter DAC value(input to ACMPLP) within permitted range(0-4095).
-When DAC input value is greater than set reference voltage(another input to ACMPLP),
-Comparator output status is HIGH and on-board LED is turned ON.
-If the output status (when DAC input less than ref voltage) is LOW,then the LED is turned OFF.
-
- Menu Options
- 1. Enter 1 for ACMPLP Normal Mode
- 2. Enter 2 for Exit
-        """
-        
-        test_io_info = [(r"1", r""""""),]
+        test_io_info = [(b"1", r'Enter the DAC Value(0 - 4095) to Compare:'),
+                        (b"0", r'Comparator Output is HIGH and Setting On-board LED HIGH'),
+                        (b"1", r'Enter the DAC Value(0 - 4095) to Compare:'),
+                        (b"2150", r'Comparator Output is HIGH and Setting On-board LED HIGH'),]
         
         ''' Assume a hex file name based on the the unit test module name and test case.'''
         fpath, fname = os.path.split(__file__)
@@ -157,6 +159,8 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
         
         self.assertTrue(self.jlink.connected(), "Jlink not connected")
         self.assertTrue(self.jlink.target_connected(), "Jlink Target CPU not connected")
+        
+        """ Request RTT block to be located at 0x20002000 """
         self.jlink.rtt_start(0x20002000)
         
         """ Located RTT control block @ 0x200004F4 """
@@ -178,14 +182,25 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
         
         self.assertGreater(rtt_status.NumBytesTransferred, 0, "Did not receive initialization bytes")
         
+        """ Verify Initial bytes received """
         rtt_output = self.jlink.rtt_read(0, rtt_status.NumBytesTransferred)
         rtt_output_as_str = bytearray(rtt_output)
         rtt_output_as_str = rtt_output_as_str.decode("utf-8")
+        self.expected_common = self.expected_common.replace('\n',"\r\n")
+        self.assertIn(self.expected_common, rtt_output_as_str, "Expected output not found in RTT output")
         
-        
-        while rtt_status.NumDownBuffers == 0 or rtt_status.NumDownBuffers == 0:
+        """ Recursive test """
+        bytes_rcvd = 0
+        for io in test_io_info:
+            bytes_rcvd = rtt_status.NumBytesTransferred
+            self.jlink.rtt_write(0, io[0])
+            time.sleep(0.1)
             rtt_status = self.jlink.rtt_get_status()
-
+            bytes_to_read = rtt_status.NumBytesTransferred - bytes_rcvd
+            rtt_output = self.jlink.rtt_read(0, bytes_to_read)
+            rtt_output_as_str = bytearray(rtt_output)
+            rtt_output_as_str = rtt_output_as_str.decode("utf-8")
+            self.assertIn(io[1], rtt_output_as_str, "Expected output not found in rtt")
         pass
 
 
