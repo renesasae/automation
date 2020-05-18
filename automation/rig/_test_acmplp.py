@@ -70,6 +70,8 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
  2. Enter 2 for Exit
         """
         
+        test_io_info = [(r"1", r""""""),]
+        
         ''' Assume a hex file name based on the the unit test module name and test case.'''
         fpath, fname = os.path.split(__file__)
         search_patterns = []
@@ -121,33 +123,52 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
         
         ''' Connect to a Target CPU '''
         target_cpu = automation.rig.boards.mcus[automation.rig.boards.names[self.board_name]]       
-        self.jlink.connect(target_cpu)
+        self.jlink.connect(target_cpu,speed=4000)
         
         self.assertTrue(self.jlink.target_connected(), "Jlink not connected")
-        
+        self.jlink.enable_reset_pulls_reset()
+        self.jlink.enable_reset_pulls_trst()
+        self.jlink.enable_reset_inits_registers()
+
         """ Disable dialog boxes """
 #         self.jlink.disable_dialog_boxes()
         
         """ Program the board """
         bytes_flashed = self.jlink.flash_file(path=files[0], addr=0, on_progress=None, power_on=False)
         
-        time.sleep(2)
-        
         if self.jlink.halted() == False:
             self.jlink.halt()
         
-        self.jlink.reset(halt=False)
+        self.jlink.set_reset_pin_low()
+        self.jlink.set_trst_pin_low()
+        time.sleep(0.5)
+        self.jlink.set_reset_pin_high()
+        self.jlink.set_trst_pin_high()
+        self.assertTrue(self.jlink.set_tif(pylink.enums.JLinkInterfaces.SWD),"Could not set JLink Target Interface to SWD")
         
-        """ Start the RTT """
-        self.jlink.rtt_start()
-       
+        
+#         self.jlink.reset(ms=750, halt=False)
+             
         self.rtt_status = self.jlink.rtt_get_status()
         
-        self.assertEqual(self.rtt_status.IsRunning, 1, "RTT is not running")
-        self.assertGreater(self.rtt_status.NumDownBuffers, 0, "NumDownbuffers set to 0")
-        self.assertGreater(self.rtt_status.NumUpBuffers, 1, "NumUpbuffers set to 0")
+#         self.assertEqual(self.rtt_status.IsRunning, 1, "RTT is not running")
+#         self.assertGreater(self.rtt_status.NumDownBuffers, 0, "NumDownbuffers set to 0")
+#         self.assertGreater(self.rtt_status.NumUpBuffers, 0, "NumUpbuffers set to 0")
+
+        """ Start the RTT """
+        if self.rtt_status.IsRunning != 1:
+            self.jlink.rtt_start()
+            self.rtt_status = self.jlink.rtt_get_status()
         
-        if self.rtt_status.NumBytesRead
+        if self.rtt_status.NumBytesRead == 0:
+            self.jlink.set_reset_pin_low()
+            self.jlink.set_trst_pin_low()
+            time.sleep(0.5)
+            self.jlink.set_reset_pin_high()
+            self.jlink.set_trst_pin_high()
+            self.rtt_status = self.jlink.rtt_get_status()
+            num_bytes = self.rtt_status.NumBytesRead
+            initial_output = self.jlink.rtt_read(0, num_bytes)
         
         
         
