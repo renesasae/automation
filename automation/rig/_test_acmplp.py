@@ -2,6 +2,11 @@
 Created on May 17, 2020
 
 @author: Onkar.Raut
+TODO: 
+    1. Catergorize assertion failures as 'setup failure' or 'ep failure'
+    2. More messages to each test case for enabling issues in future.
+    3. Consider moving test_io_info to a text file.
+    4. Consider how we can standardize this file.
 '''
 import os
 import re
@@ -68,13 +73,13 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
 
 
     def testEKRA2A1(self):
-        
+        """ Test ACMPLP Implementation on the EK-RA2A1"""
         def EKRA2A1_on_progress(action, progress_string, percentage):
             
             
             
             pass
-        
+        """ TODO: Consider moving this to a text file. """
         test_io_info = [(b"1", r'Enter the DAC Value(0 - 4095) to Compare:'),
                         (b"0", r'Comparator Output is HIGH and Setting On-board LED HIGH'),
                         (b"1", r'Enter the DAC Value(0 - 4095) to Compare:'),
@@ -97,6 +102,7 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
         self.hexfile = "_".join([self.module_name, self.board_name, "ep"])
         self.hexfile = self.hexfile + r".hex"
         
+        """ TODO: Consider variable input paths for hex files """
         fpath = os.path.join(fpath,"**",self.hexfile)
         files = glob.glob(fpath,recursive=True)
         
@@ -164,11 +170,12 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
         self.jlink.rtt_start(0x20002000)
         
         """ Located RTT control block @ 0x200004F4 """
-        """ Located RTT control block @ 0x20002000"""
+        """ Located RTT control block @ 0x20000000"""
         rtt_status = self.jlink.rtt_get_status()
         
         self.assertEqual(1, rtt_status.IsRunning, "Segger RTT interface not started")
         
+        """ Assuming board is in an unknown state and no output is periodically produced."""
         if rtt_status.NumBytesTransferred == 0:
             """ Bring device to reset state """
             self.jlink.set_reset_pin_low()
