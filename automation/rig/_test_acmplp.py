@@ -40,7 +40,6 @@ class Test(unittest.TestCase):
                 
         pass
 
-
     def tearDown(self):
 #         os.chdir(self.working_directory)
         if self.jlink.opened() == True:
@@ -49,6 +48,13 @@ class Test(unittest.TestCase):
 
 
     def testEKRA2A1(self):
+        
+        def EKRA2A1_on_progress(action, progress_string, percentage):
+            
+            
+            
+            pass
+        
         expected = """
 ******************************************************************
 *   Renesas FSP Example Project for r_acmplp Module              *
@@ -131,50 +137,55 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
         self.jlink.enable_reset_inits_registers()
 
         """ Disable dialog boxes """
-#         self.jlink.disable_dialog_boxes()
+        self.jlink.disable_dialog_boxes()
         
         """ Program the board """
-        bytes_flashed = self.jlink.flash_file(path=files[0], addr=0, on_progress=None, power_on=False)
+        bytes_flashed = self.jlink.flash_file(path=files[0], addr=0, on_progress=EKRA2A1_on_progress, power_on=False)
         
-        if self.jlink.halted() == False:
-            self.jlink.halt()
+        """ Close the emulator """
+        if self.jlink.opened() == True:
+            self.jlink.close()
         
-        self.jlink.set_reset_pin_low()
-        self.jlink.set_trst_pin_low()
-        time.sleep(0.5)
-        self.jlink.set_reset_pin_high()
-        self.jlink.set_trst_pin_high()
+        """ Open again """
+        self.jlink.open(self.serial_number)
+        self.assertTrue(self.jlink.opened(), "Jlink could not be opened")
+        
         self.assertTrue(self.jlink.set_tif(pylink.enums.JLinkInterfaces.SWD),"Could not set JLink Target Interface to SWD")
         
+        if self.jlink.target_connected()==False:
+            self.jlink.connect(target_cpu,speed=4000)
         
-#         self.jlink.reset(ms=750, halt=False)
-             
-        self.rtt_status = self.jlink.rtt_get_status()
+        self.assertTrue(self.jlink.connected(), "Jlink not connected")
+        self.assertTrue(self.jlink.target_connected(), "Jlink Target CPU not connected")
+        self.jlink.rtt_start(0x20002000)
         
-#         self.assertEqual(self.rtt_status.IsRunning, 1, "RTT is not running")
-#         self.assertGreater(self.rtt_status.NumDownBuffers, 0, "NumDownbuffers set to 0")
-#         self.assertGreater(self.rtt_status.NumUpBuffers, 0, "NumUpbuffers set to 0")
-
-        """ Start the RTT """
-        if self.rtt_status.IsRunning != 1:
-            self.jlink.rtt_start()
-            self.rtt_status = self.jlink.rtt_get_status()
+        """ Located RTT control block @ 0x200004F4 """
+        """ Located RTT control block @ 0x20002000"""
+        rtt_status = self.jlink.rtt_get_status()
         
-        if self.rtt_status.NumBytesRead == 0:
+        self.assertEqual(1, rtt_status.IsRunning, "Segger RTT interface not started")
+        
+        if rtt_status.NumBytesTransferred == 0:
+            """ Bring device to reset state """
             self.jlink.set_reset_pin_low()
-            self.jlink.set_trst_pin_low()
             time.sleep(0.5)
             self.jlink.set_reset_pin_high()
-            self.jlink.set_trst_pin_high()
-            self.rtt_status = self.jlink.rtt_get_status()
-            num_bytes = self.rtt_status.NumBytesRead
-            initial_output = self.jlink.rtt_read(0, num_bytes)
+            time.sleep(0.1)
+            rtt_status = self.jlink.rtt_get_status()
+        
+        self.assertGreater(rtt_status.NumDownBuffers, 0, "NumDownbuffers set to 0")
+        self.assertGreater(rtt_status.NumUpBuffers, 0, "NumUpbuffers set to 0")
+        
+        self.assertGreater(rtt_status.NumBytesTransferred, 0, "Did not receive initialization bytes")
+        
+        rtt_output = self.jlink.rtt_read(0, rtt_status.NumBytesTransferred)
+        rtt_output_as_str = bytearray(rtt_output)
+        rtt_output_as_str = rtt_output_as_str.decode("utf-8")
         
         
-        
-        
-       
-       
+        while rtt_status.NumDownBuffers == 0 or rtt_status.NumDownBuffers == 0:
+            rtt_status = self.jlink.rtt_get_status()
+
         pass
 
 
