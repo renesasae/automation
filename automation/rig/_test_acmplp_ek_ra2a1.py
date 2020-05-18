@@ -82,7 +82,7 @@ class Test(unittest.TestCase):
         pass
 
 
-    def testInitial(self):
+    def testRA2A1(self):
         expected = """
 ******************************************************************
 *   Renesas FSP Example Project for r_acmplp Module              *
@@ -104,6 +104,11 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
  2. Enter 2 for Exit
         """
         lib = pylink.library.Library(self.jlinkDLL)
+        
+        ''' Assume a hex file name based on the the unit test name.'''
+        fpath, fname = os.path.split(__file__)
+        search_patterns = []
+        search_patterns.append(r"(_test_(.*)_(ek_.*).py)")
         
         
         pass
