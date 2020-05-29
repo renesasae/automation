@@ -132,12 +132,6 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
 
     def test_ek_ra2a1(self):
         """ Test ACMPLP Implementation on the EK-RA2A1"""
-        def EKRA2A1_on_progress(action, progress_string, percentage):
-            
-            
-            
-            pass
-        
         for file in self.files:
             ''' Connect Emulator '''
             self.jlink.open(self.serial_number)
@@ -157,7 +151,7 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
             self.jlink.disable_dialog_boxes()
             
             """ Program the board """
-            bytes_flashed = self.jlink.flash_file(path=file, addr=0, on_progress=EKRA2A1_on_progress, power_on=False)
+            bytes_flashed = self.jlink.flash_file(path=file, addr=0, power_on=False)
             
             """ Close the emulator """
             if self.jlink.opened() == True:
@@ -225,12 +219,6 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
     
     def test_ek_ra4m1(self):
         """ Test ACMPLP Implementation on the EK-RA2A1"""
-        def EKRA2A1_on_progress(action, progress_string, percentage):
-            
-            
-            
-            pass
-        
         for file in self.files:
             ''' Connect Emulator '''
             self.jlink.open(self.serial_number)
@@ -250,7 +238,7 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
             self.jlink.disable_dialog_boxes()
             
             """ Program the board """
-            bytes_flashed = self.jlink.flash_file(path=file, addr=0, on_progress=EKRA2A1_on_progress, power_on=False)
+            bytes_flashed = self.jlink.flash_file(path=file, addr=0, power_on=False)
             
             """ Close the emulator """
             if self.jlink.opened() == True:
