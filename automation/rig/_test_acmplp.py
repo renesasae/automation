@@ -46,12 +46,17 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
  Menu Options
  1. Enter 1 for ACMPLP Normal Mode
  2. Enter 2 for Exit
-"""
-    
+""".replace('\n',"\r\n")
+   
+    test_io_info = [(b"1", r'Enter the DAC Value(0 - 4095) to Compare:'),
+                    (b"0", r'Comparator Output is HIGH and Setting On-board LED HIGH'),
+                    (b"1", r'Enter the DAC Value(0 - 4095) to Compare:'),
+                    (b"2150", r'Comparator Output is HIGH and Setting On-board LED HIGH'),] 
     def setUp(self):
         # Reads EP version and FSP version from a file        
         jlinkDLLpath=None
         if platform.system()=='Windows':
+            jlinkDLLpath=pylink.jlink.library.Library()
             jlinkDLLpath=r"C:\Program Files (x86)\SEGGER\JLink_V670\JLinkARM.dll"
         if platform.system()=='Linux':
             jlinkDLLpath=r"/usr/local/lib/libjlinkarm.so"    
@@ -61,59 +66,43 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
         
         self.jlinkDLL = jlinkDLLpath
         self.working_directory = os.getcwd()
+        
+        """ Get the board name based on the test name """
+        sp = r"(test_(.*))"
+        search_pattern = re.compile(sp)
+        match = re.search(search_pattern, self._testMethodName)
+        self.assertIsNotNone(match, "***SETUP FAILURE***:Invalid Test name")
+        self.board_name = match.group(2)
 #         os.chdir(os.path.dirname(os.path.realpath(__file__)))
-                
-        pass
 
-    def tearDown(self):
-#         os.chdir(self.working_directory)
-        if self.jlink.opened() == True:
-            self.jlink.close()
-        pass
-
-
-    def testEKRA2A1(self):
-        """ Test ACMPLP Implementation on the EK-RA2A1"""
-        def EKRA2A1_on_progress(action, progress_string, percentage):
-            
-            
-            
-            pass
-        """ TODO: Consider moving this to a text file. """
-        test_io_info = [(b"1", r'Enter the DAC Value(0 - 4095) to Compare:'),
-                        (b"0", r'Comparator Output is HIGH and Setting On-board LED HIGH'),
-                        (b"1", r'Enter the DAC Value(0 - 4095) to Compare:'),
-                        (b"2150", r'Comparator Output is HIGH and Setting On-board LED HIGH'),]
-        
-        ''' Assume a hex file name based on the the unit test module name and test case.'''
         fpath, fname = os.path.split(__file__)
-        search_patterns = []
-        search_patterns.append(r"(_test_(.*).py)")
+        sp = r"(_test_(.*).py)"
         
-        for sp in search_patterns:
-            search_pattern = re.compile(sp)
-            match = re.search(search_pattern, fname)
-            if match:
-                self.pyfile = match.group(1)
-                self.module_name = match.group(2)
-                break
-        
-        self.board_name = r"ek_ra2a1"
+        search_pattern = re.compile(sp)
+        match = re.search(search_pattern, fname)
+        self.assertIsNotNone(match, "***SETUP FAILURE***:Invalid python unittest filename")
+        self.module_name = match.group(2)
         self.hexfile = "_".join([self.module_name, self.board_name, "ep"])
         self.hexfile = self.hexfile + r".hex"
         
-        """ TODO: Consider variable input paths for hex files """
+        """ Search recursively in curent working directory for matching files """
         fpath = os.path.join(fpath,"**",self.hexfile)
-        files = glob.glob(fpath,recursive=True)
-        
-        self.assertGreater(len(files), 0, "Hex File %s Not found." % self.hexfile)
-#         self.assertEqual(len(files), 1, "Multiple Hex File %s found." % self.hexfile)
+        self.files = glob.glob(fpath,recursive=True)
+        self.assertGreater(len(self.files), 0, "***SETUP FAILURE***:Hex File %s Not found." % self.hexfile)
         
         self.assertIn(automation.rig.boards.names[self.board_name], automation.rig.boards.serials.keys(), 
-                      "Board does not exist. Serial number for board cannot be calculated")
+                      "***SETUP FAILURE***: Board does not exist. Serial number for board cannot be calculated")
         self.serial_number = automation.rig.boards.serials[automation.rig.boards.names[self.board_name]]
+        
         jlinklog=self.id()+".log"
-        lib=pylink.library.Library(self.jlinkDLL)
+        
+        
+        lib=pylink.library.Library()
+        
+        if None == lib.dll():
+            if None == lib.load_default():
+                lib=pylink.library.Library(self.jlinkDLL)
+        
         log=jlinklog
         self.jlink = pylink.JLink(lib=lib)
         
@@ -126,88 +115,205 @@ If the output status (when DAC input less than ref voltage) is LOW,then the LED 
                 found = True
                 break
         
+        if found == False:
+            self.skipTest("***SETUP FAILURE***:Expected Emulator SN:%(sn)s not connected to the rig" % {"sn":self.serial_number})
+        
         ''' Test if emulator is connected '''
         self.assertTrue(found, 
-                      "Expected Emulator SN:%(sn)s not connected to the rig" % {"sn":self.serial_number})
-        
-        ''' Connect Emulator '''
-        self.jlink.open(self.serial_number)
-        self.assertTrue(self.jlink.opened(), "Jlink could not be opened")
-        self.assertTrue(self.jlink.connected(), "Jlink not connected")
-        
-        ''' Connect to a Target CPU '''
-        target_cpu = automation.rig.boards.mcus[automation.rig.boards.names[self.board_name]]       
-        self.jlink.connect(target_cpu,speed=4000)
-        
-        self.assertTrue(self.jlink.target_connected(), "Jlink not connected")
-        self.jlink.enable_reset_pulls_reset()
-        self.jlink.enable_reset_pulls_trst()
-        self.jlink.enable_reset_inits_registers()
+                      "***SETUP FAILURE***:Expected Emulator SN:%(sn)s not connected to the rig" % {"sn":self.serial_number})
+        pass
 
-        """ Disable dialog boxes """
-        self.jlink.disable_dialog_boxes()
-        
-        """ Program the board """
-        bytes_flashed = self.jlink.flash_file(path=files[0], addr=0, on_progress=EKRA2A1_on_progress, power_on=False)
-        
-        """ Close the emulator """
+    def tearDown(self):
+#         os.chdir(self.working_directory)
         if self.jlink.opened() == True:
             self.jlink.close()
+        pass
+
+
+    def test_ek_ra2a1(self):
+        """ Test ACMPLP Implementation on the EK-RA2A1"""
+        def EKRA2A1_on_progress(action, progress_string, percentage):
+            
+            
+            
+            pass
         
-        """ Open again """
-        self.jlink.open(self.serial_number)
-        self.assertTrue(self.jlink.opened(), "Jlink could not be opened")
-        
-        self.assertTrue(self.jlink.set_tif(pylink.enums.JLinkInterfaces.SWD),"Could not set JLink Target Interface to SWD")
-        
-        if self.jlink.target_connected()==False:
-            self.jlink.connect(target_cpu,speed=4000)
-        
-        self.assertTrue(self.jlink.connected(), "Jlink not connected")
-        self.assertTrue(self.jlink.target_connected(), "Jlink Target CPU not connected")
-        
-        """ Request RTT block to be located at 0x20002000 """
-        self.jlink.rtt_start(0x20002000)
-        
-        """ Located RTT control block @ 0x200004F4 """
-        """ Located RTT control block @ 0x20000000"""
-        rtt_status = self.jlink.rtt_get_status()
-        
-        self.assertEqual(1, rtt_status.IsRunning, "Segger RTT interface not started")
-        
-        """ Assuming board is in an unknown state and no output is periodically produced."""
-        if rtt_status.NumBytesTransferred == 0:
+        for file in self.files:
+            ''' Connect Emulator '''
+            self.jlink.open(self.serial_number)
+            self.assertTrue(self.jlink.opened(), "***SETUP FAILURE***:Jlink could not be opened")
+            self.assertTrue(self.jlink.connected(), "***SETUP FAILURE***:Jlink not connected")
+            
+            ''' Connect to a Target CPU '''
+            self.target_cpu = automation.rig.boards.mcus[automation.rig.boards.names[self.board_name]]       
+            self.jlink.connect(self.target_cpu,speed=4000)
+            
+            self.assertTrue(self.jlink.target_connected(), "***SETUP FAILURE***:Jlink not connected")
+            self.jlink.enable_reset_pulls_reset()
+            self.jlink.enable_reset_pulls_trst()
+            self.jlink.enable_reset_inits_registers()
+    
+            """ Disable dialog boxes """
+            self.jlink.disable_dialog_boxes()
+            
+            """ Program the board """
+            bytes_flashed = self.jlink.flash_file(path=file, addr=0, on_progress=EKRA2A1_on_progress, power_on=False)
+            
+            """ Close the emulator """
+            if self.jlink.opened() == True:
+                self.jlink.close()
+            
+            """ Open again """
+            self.jlink.open(self.serial_number)
+            self.assertTrue(self.jlink.opened(), "***SETUP FAILURE***:Jlink could not be opened")
+            
+            self.assertTrue(self.jlink.set_tif(pylink.enums.JLinkInterfaces.SWD),"***SETUP FAILURE***:Could not set JLink Target Interface to SWD")
+            
+            if self.jlink.target_connected()==False:
+                self.jlink.connect(self.target_cpu,speed=4000)
+            
+            self.assertTrue(self.jlink.connected(), "***SETUP FAILURE***:Jlink not connected")
+            self.assertTrue(self.jlink.target_connected(), "***SETUP FAILURE***:Jlink Target CPU not connected")
+            
+            """ Request RTT block to be located at 0x20002000 """
+            self.jlink.rtt_start(0x20002000)
+            
+            """ Located RTT control block @ 0x200004F4 """
+            """ Located RTT control block @ 0x20000000"""
+            rtt_status = self.jlink.rtt_get_status()
+            
+            self.assertEqual(1, rtt_status.IsRunning, "***SETUP FAILURE***:Segger RTT interface not started")
+            
+            """ Assuming board is in an unknown state and no output is periodically produced."""
+    #         if rtt_status.NumBytesTransferred == 0:
             """ Bring device to reset state """
             self.jlink.set_reset_pin_low()
             time.sleep(0.5)
             self.jlink.set_reset_pin_high()
             time.sleep(0.1)
             rtt_status = self.jlink.rtt_get_status()
-        
-        self.assertGreater(rtt_status.NumDownBuffers, 0, "NumDownbuffers set to 0")
-        self.assertGreater(rtt_status.NumUpBuffers, 0, "NumUpbuffers set to 0")
-        
-        self.assertGreater(rtt_status.NumBytesTransferred, 0, "Did not receive initialization bytes")
-        
-        """ Verify Initial bytes received """
-        rtt_output = self.jlink.rtt_read(0, rtt_status.NumBytesTransferred)
-        rtt_output_as_str = bytearray(rtt_output)
-        rtt_output_as_str = rtt_output_as_str.decode("utf-8")
-        self.expected_common = self.expected_common.replace('\n',"\r\n")
-        self.assertIn(self.expected_common, rtt_output_as_str, "Expected output not found in RTT output")
-        
-        """ Recursive test """
-        bytes_rcvd = 0
-        for io in test_io_info:
-            bytes_rcvd = rtt_status.NumBytesTransferred
-            self.jlink.rtt_write(0, io[0])
-            time.sleep(0.1)
-            rtt_status = self.jlink.rtt_get_status()
-            bytes_to_read = rtt_status.NumBytesTransferred - bytes_rcvd
-            rtt_output = self.jlink.rtt_read(0, bytes_to_read)
+            
+            self.assertGreater(rtt_status.NumDownBuffers, 0, "***SETUP FAILURE***:NumDownbuffers set to 0")
+            self.assertGreater(rtt_status.NumUpBuffers, 0, "***SETUP FAILURE***:NumUpbuffers set to 0")
+            
+            self.assertGreater(rtt_status.NumBytesTransferred, 0, "***COMPARE FAILURE***:Did not receive initialization bytes")
+            
+            """ Verify Initial bytes received """
+            rtt_output = self.jlink.rtt_read(0, rtt_status.NumBytesTransferred)
             rtt_output_as_str = bytearray(rtt_output)
             rtt_output_as_str = rtt_output_as_str.decode("utf-8")
-            self.assertIn(io[1], rtt_output_as_str, "Expected output not found in rtt")
+            self.assertIn(self.expected_common, rtt_output_as_str, "***COMPARE FAILURE***:Expected output not found in RTT output")
+            
+            """ Recursive test """
+            bytes_rcvd = 0
+            for io in self.test_io_info:
+                bytes_rcvd = rtt_status.NumBytesTransferred
+                if len(io[0]) > 0:
+                    self.jlink.rtt_write(0, io[0])
+                time.sleep(0.1)
+                rtt_status = self.jlink.rtt_get_status()
+                bytes_to_read = rtt_status.NumBytesTransferred - bytes_rcvd
+                rtt_output = self.jlink.rtt_read(0, bytes_to_read)
+                rtt_output_as_str = bytearray(rtt_output)
+                rtt_output_as_str = rtt_output_as_str.decode("utf-8")
+                self.assertIn(io[1], rtt_output_as_str, "***COMPARE FAILURE***:Expected output not found in rtt")
+            
+            """ Close the emulator """
+            if self.jlink.opened() == True:
+                self.jlink.close()
+        pass
+    
+    def test_ek_ra4m1(self):
+        """ Test ACMPLP Implementation on the EK-RA2A1"""
+        def EKRA2A1_on_progress(action, progress_string, percentage):
+            
+            
+            
+            pass
+        
+        for file in self.files:
+            ''' Connect Emulator '''
+            self.jlink.open(self.serial_number)
+            self.assertTrue(self.jlink.opened(), "***SETUP FAILURE***:Jlink could not be opened")
+            self.assertTrue(self.jlink.connected(), "***SETUP FAILURE***:Jlink not connected")
+            
+            ''' Connect to a Target CPU '''
+            self.target_cpu = automation.rig.boards.mcus[automation.rig.boards.names[self.board_name]]       
+            self.jlink.connect(self.target_cpu,speed=4000)
+            
+            self.assertTrue(self.jlink.target_connected(), "***SETUP FAILURE***:Jlink not connected")
+            self.jlink.enable_reset_pulls_reset()
+            self.jlink.enable_reset_pulls_trst()
+            self.jlink.enable_reset_inits_registers()
+    
+            """ Disable dialog boxes """
+            self.jlink.disable_dialog_boxes()
+            
+            """ Program the board """
+            bytes_flashed = self.jlink.flash_file(path=file, addr=0, on_progress=EKRA2A1_on_progress, power_on=False)
+            
+            """ Close the emulator """
+            if self.jlink.opened() == True:
+                self.jlink.close()
+            
+            """ Open again """
+            self.jlink.open(self.serial_number)
+            self.assertTrue(self.jlink.opened(), "***SETUP FAILURE***:Jlink could not be opened")
+            
+            self.assertTrue(self.jlink.set_tif(pylink.enums.JLinkInterfaces.SWD),"***SETUP FAILURE***:Could not set JLink Target Interface to SWD")
+            
+            if self.jlink.target_connected()==False:
+                self.jlink.connect(self.target_cpu,speed=4000)
+            
+            self.assertTrue(self.jlink.connected(), "***SETUP FAILURE***:Jlink not connected")
+            self.assertTrue(self.jlink.target_connected(), "***SETUP FAILURE***:Jlink Target CPU not connected")
+            
+            """ Request RTT block to be located at 0x20002000 """
+            self.jlink.rtt_start(0x20002000)
+            
+            """ Located RTT control block @ 0x200004F4 """
+            """ Located RTT control block @ 0x20000000"""
+            rtt_status = self.jlink.rtt_get_status()
+            
+            self.assertEqual(1, rtt_status.IsRunning, "***SETUP FAILURE***:Segger RTT interface not started")
+            
+            """ Assuming board is in an unknown state and no output is periodically produced."""
+    #         if rtt_status.NumBytesTransferred == 0:
+            """ Bring device to reset state """
+            self.jlink.set_reset_pin_low()
+            time.sleep(0.5)
+            self.jlink.set_reset_pin_high()
+            time.sleep(0.1)
+            rtt_status = self.jlink.rtt_get_status()
+            
+            self.assertGreater(rtt_status.NumDownBuffers, 0, "***SETUP FAILURE***:NumDownbuffers set to 0")
+            self.assertGreater(rtt_status.NumUpBuffers, 0, "***SETUP FAILURE***:NumUpbuffers set to 0")
+            
+            self.assertGreater(rtt_status.NumBytesTransferred, 0, "***COMPARE FAILURE***:Did not receive initialization bytes")
+            
+            """ Verify Initial bytes received """
+            rtt_output = self.jlink.rtt_read(0, rtt_status.NumBytesTransferred)
+            rtt_output_as_str = bytearray(rtt_output)
+            rtt_output_as_str = rtt_output_as_str.decode("utf-8")
+            self.assertIn(self.expected_common, rtt_output_as_str, "***COMPARE FAILURE***:Expected output not found in RTT output")
+            
+            """ Recursive test """
+            bytes_rcvd = 0
+            for io in self.test_io_info:
+                bytes_rcvd = rtt_status.NumBytesTransferred
+                if len(io[0]) > 0:
+                    self.jlink.rtt_write(0, io[0])
+                time.sleep(0.1)
+                rtt_status = self.jlink.rtt_get_status()
+                bytes_to_read = rtt_status.NumBytesTransferred - bytes_rcvd
+                rtt_output = self.jlink.rtt_read(0, bytes_to_read)
+                rtt_output_as_str = bytearray(rtt_output)
+                rtt_output_as_str = rtt_output_as_str.decode("utf-8")
+                self.assertIn(io[1], rtt_output_as_str, "***COMPARE FAILURE***:Expected output not found in rtt")
+            
+            """ Close the emulator """
+            if self.jlink.opened() == True:
+                self.jlink.close()
         pass
 
 
